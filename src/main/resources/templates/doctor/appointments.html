@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8">
+        <title>Lịch Khám Bệnh - Bác sĩ</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+        <style>body {
+            font-family: 'Inter', sans-serif;
+        }</style>
+    </head>
+    <body class="bg-light">
+
+        <div th:replace="~{fragments/doctor-components :: navbar}"></div>
+        <div th:replace="~{fragments/doctor-components :: logoutModal}"></div>
+        <div class="container p-4 bg-white shadow-sm rounded-3">
+            <h3 class="fw-bold text-primary mb-4">Danh sách Lịch hẹn Khám bệnh</h3>
+
+            <!-- Error Alert -->
+            <div th:if="${sysError}" class="alert alert-danger alert-dismissible fade show fw-bold" role="alert">
+                <span th:text="${sysError}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <!-- Success Alerts -->
+            <div th:if="${param.success == 'confirmed'}" class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>Thành công!</strong> Lịch hẹn đã được xác nhận.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div th:if="${param.success == 'cancelled'}" class="alert alert-info alert-dismissible fade show" role="alert">
+                <strong>Thành công!</strong> Lịch hẹn đã được hủy.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div th:if="${param.success == 'examined'}" class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>Thành công!</strong> Kết quả khám và đơn thuốc đã được lưu.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div th:if="${param.error == 'notfound'}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Lỗi!</strong> Không tìm thấy lịch khám.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div th:if="${param.error == 'forbidden'}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Lỗi!</strong> Bạn không có quyền thực hiện thao tác này.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div th:if="${param.error == 'conflict'}" class="alert alert-warning alert-dismissible fade show" role="alert">
+                <strong>Cảnh báo!</strong> Dữ liệu vừa được cập nhật ở nơi khác. Vui lòng tải lại và thử lại.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div th:if="${param.error == 'saveFailed'}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Lỗi!</strong> Không thể lưu bệnh án lúc này. Vui lòng thử lại sau.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div class="card shadow-none border-0">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle border table-striped">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Mã Lịch</th>
+                                    <th>Ngày Khám</th>
+                                    <th>Giờ</th>
+                                    <th>Bệnh Nhân</th>
+                                    <th>Triệu Chứng</th>
+                                    <th>Trạng Thái</th>
+                                    <th>Hành Động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="appt : ${appointments}">
+                                    <td class="text-muted small fw-bold">#<span th:text="${appt.id}"></span></td>
+                                    <td th:text="${appt.appointmentDate}" class="fw-bold text-primary"></td>
+                                    <td class="text-muted" th:text="${appt.appointmentTime}"></td>
+                                    <td class="fw-bold text-success" th:text="${appt.patient.username}"></td>
+                                    <td class="text-truncate" th:title="${appt.reason}" th:text="${appt.reason}"></td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark" th:if="${appt.status == 'PENDING'}">Chờ duyệt</span>
+                                        <span class="badge bg-success" th:if="${appt.status == 'CONFIRMED'}">Đã duyệt</span>
+                                        <span class="badge bg-secondary" th:if="${appt.status == 'WAITING_DISPENSE'}">Chờ cấp phát thuốc</span>
+                                        <span class="badge bg-primary" th:if="${appt.status == 'COMPLETED'}">Đã khám xong</span>
+                                        <span class="badge bg-danger" th:if="${appt.status == 'CANCELLED'}">Đã hủy</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a th:if="${appt.status == 'PENDING'}"
+                                               th:href="@{/doctor/appointments/confirm/{id}(id=${appt.id})}"
+                                               class="btn btn-sm btn-outline-success fw-bold"
+                                               onclick="return confirm('Xác nhận lịch hẹn này?')">Duyệt</a>
+                                            <a th:if="${appt.status == 'PENDING'}"
+                                               th:href="@{/doctor/appointments/cancel/{id}(id=${appt.id})}"
+                                               class="btn btn-sm btn-outline-danger fw-bold"
+                                               onclick="return confirm('Bạn chắc chắn muốn hủy?')">Hủy</a>
+                                            <a th:if="${appt.status == 'CONFIRMED'}"
+                                               th:href="@{/doctor/appointments/examine/{id}(id=${appt.id})}"
+                                               class="btn btn-sm btn-primary fw-bold">Khám & Kê đơn</a>
+                                            <a th:if="${appt.status == 'WAITING_DISPENSE'}"
+                                               th:href="@{/doctor/dispense}"
+                                               class="btn btn-sm btn-outline-primary fw-bold">Cấp phát</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(appointments)}">
+                                    <td colspan="7" class="text-center text-muted py-5">
+                                        <div class="fs-1 mb-3"></div>
+                                        <strong>Hiện tại bác sĩ chưa có lịch hẹn nào.</strong><br>
+                                        <span class="small">Hãy nghỉ ngơi một chút nhé!</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    </body>
+</html>

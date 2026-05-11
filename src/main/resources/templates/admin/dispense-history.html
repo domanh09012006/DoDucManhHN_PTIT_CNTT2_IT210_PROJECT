@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Lịch sử cấp phát thuốc - Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .status-dispensed {
+            background-color: #28a745;
+            color: #fff;
+        }
+        .status-rejected {
+            background-color: #dc3545;
+            color: #fff;
+        }
+        .table-section {
+            margin-bottom: 3rem;
+        }
+    </style>
+</head>
+<body>
+<div class="d-flex">
+    <div th:replace="~{fragments/admin-components :: sidebar (activePage='medicines')}"></div>
+    <div class="w-100">
+        <div th:replace="~{fragments/admin-components :: header (pageTitle='Lịch sử cấp phát thuốc')}"></div>
+        <div class="container-fluid p-4">
+
+            <!-- Danh sách lịch sử cấp phát -->
+            <div class="card shadow-sm border-0 table-section">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="fw-bold text-success mb-0">📜 Lịch sử cấp phát thuốc</h5>
+                            <small class="text-muted">Danh sách những đơn thuốc đã được xử lý</small>
+                        </div>
+                        <a href="/admin/dispense" class="btn btn-outline-primary btn-sm">
+                            ← Quay lại danh sách chờ cấp phát
+                        </a>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Hồ sơ (ID)</th>
+                                <th>Bác sĩ</th>
+                                <th>Bệnh nhân</th>
+                                <th>Tên thuốc</th>
+                                <th>Số lượng</th>
+                                <th>Trạng thái</th>
+                                <th>Hành động</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="p : ${dispensedPrescriptions}">
+                                <td th:text="${p.id}" class="fw-bold"></td>
+                                <td th:text="${p.medicalRecord.id}" class="text-muted"></td>
+                                <td th:text="${p.medicalRecord.appointment.doctor.fullName}"></td>
+                                <td th:text="${p.medicalRecord.appointment.patient.username}"></td>
+                                <td th:text="${p.medicine.name}"></td>
+                                <td><span class="badge bg-info">[[${p.dosage}]]</span></td>
+                                <td>
+                                    <span class="badge status-dispensed" th:if="${p.status.name() == 'DISPENSED'}">✓ Đã cấp phát</span>
+                                    <span class="badge status-rejected" th:if="${p.status.name() == 'REJECTED'}">✗ Từ chối</span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" type="button"
+                                            data-bs-toggle="modal"
+                                            th:attr="data-bs-target=${'#detailModal-' + p.id}">
+                                        👁️ Xem chi tiết
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(dispensedPrescriptions)}">
+                                <td colspan="8" class="text-center text-muted py-5">
+                                    <i class="fs-4">ℹ️</i> Không có lịch sử cấp phát thuốc.
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Modals for detailed view -->
+                    <div th:each="p : ${dispensedPrescriptions}" class="modal fade" th:id="${'detailModal-' + p.id}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Chi tiết cấp phát thuốc #[[${p.id}]]</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="text-muted small">Hồ sơ khám bệnh ID</label>
+                                        <div class="fw-bold" th:text="${p.medicalRecord.id}"></div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="text-muted small">Bác sĩ</label>
+                                        <div class="fw-bold" th:text="${p.medicalRecord.appointment.doctor.fullName}"></div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="text-muted small">Bệnh nhân</label>
+                                        <div class="fw-bold" th:text="${p.medicalRecord.appointment.patient.username}"></div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="text-muted small">Tên thuốc</label>
+                                        <div class="fw-bold" th:text="${p.medicine.name}"></div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="text-muted small">Liều lượng cấp phát</label>
+                                        <div class="fw-bold" th:text="${p.dosage}"></div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="text-muted small">Cách dùng</label>
+                                        <div class="fw-bold" th:text="${p.instruction != null ? p.instruction : 'Không có'}"></div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="text-muted small">Trạng thái</label>
+                                        <div>
+                                            <span class="badge status-dispensed" th:if="${p.status.name() == 'DISPENSED'}">✓ Đã cấp phát</span>
+                                            <span class="badge status-rejected" th:if="${p.status.name() == 'REJECTED'}">✗ Từ chối</span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="text-muted small">Chẩn đoán</label>
+                                        <div class="border rounded p-2 bg-light" th:text="${p.medicalRecord.diagnosis}"></div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8">
+        <title>Cấp phát thuốc - Bác sĩ</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+            body {
+                font-family: 'Inter', sans-serif;
+                background-color: #f8f9fa;
+            }
+            .status-pending {
+                background-color: #ffc107;
+                color: #000;
+            }
+            .status-dispensed {
+                background-color: #28a745;
+                color: #fff;
+            }
+            .status-rejected {
+                background-color: #dc3545;
+                color: #fff;
+            }
+            .action-buttons {
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .info-box {
+                background-color: #e7f3ff;
+                border-left: 4px solid #0066cc;
+                padding: 12px;
+                margin-bottom: 20px;
+                border-radius: 4px;
+            }
+            .info-box-text {
+                color: #004085;
+                margin: 0;
+            }
+        </style>
+    <body>
+        <div th:replace="~{fragments/doctor-components :: navbar}"></div>
+        <div th:replace="~{fragments/doctor-components :: logoutModal}"></div>
+
+        <div class="container-fluid p-4">
+            <div th:if="${param.success == 'fromExam'}" class="alert alert-success alert-dismissible fade show">
+                <strong>Thành công!</strong> Bệnh án đã lưu, đơn thuốc đã được chuyển sang hàng chờ cấp phát.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${param.error == 'stock'}" class="alert alert-danger alert-dismissible fade show">
+                <strong>Lỗi!</strong> Không đủ tồn kho để cấp phát.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${param.error == 'notfound'}" class="alert alert-danger alert-dismissible fade show">
+                <strong>Lỗi!</strong> Không tìm thấy đơn thuốc.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${param.error == 'forbidden'}" class="alert alert-danger alert-dismissible fade show">
+                <strong>Lỗi!</strong> Bạn không có quyền xác nhận đơn thuốc này.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${param.error == 'processed'}" class="alert alert-warning alert-dismissible fade show">
+                <strong>Cảnh báo!</strong> Đơn thuốc này đã được xác nhận trước đó.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${param.success == 'dispensed'}" class="alert alert-success alert-dismissible fade show">
+                <strong>Thành công!</strong> Đã xác nhận phát thuốc.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${param.success == 'rejected'}" class="alert alert-info alert-dismissible fade show">
+                <strong>Thông báo!</strong> Đã từ chối cấp phát thuốc.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-0 text-success">💊 Danh sách đơn thuốc chờ cấp phát</h5>
+                            <small class="text-muted">Các đơn thuốc cần được xác nhận hoặc từ chối</small>
+                        </div>
+                        <a href="/doctor/dispense/history" class="btn btn-outline-info btn-sm">
+                            📜 Xem lịch sử
+                        </a>
+                    </div>
+
+                    <div th:if="${!#lists.isEmpty(pendingPrescriptions)}" class="info-box">
+                        <p class="info-box-text mb-0">
+                            <strong>ℹ️ Hướng dẫn:</strong> Kiểm tra thông tin đơn thuốc rồi xác nhận cấp phát hoặc từ chối.
+                            Nếu cấp phát, số lượng thuốc trong kho sẽ được trừ tự động.
+                        </p>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Hồ sơ</th>
+                                    <th>Bệnh nhân</th>
+                                    <th>Tên thuốc</th>
+                                    <th>Số lượng</th>
+                                    <th>Trạng thái</th>
+                                    <th>Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="p : ${pendingPrescriptions}">
+                                    <td th:text="${p.id}" class="fw-bold"></td>
+                                    <td th:text="${p.medicalRecord.id}" class="text-muted"></td>
+                                    <td th:text="${p.medicalRecord.appointment.patient.username}"></td>
+                                    <td th:text="${p.medicine.name}"></td>
+                                    <td><span class="badge bg-info">[[${p.dosage}]]</span></td>
+                                    <td>
+                                        <span class="badge status-pending">Chờ cấp phát</span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <form th:action="@{/doctor/dispense/confirm/{id}(id=${p.id})}" method="post" style="display:inline">
+                                                <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Xác nhận phát thuốc này?')">
+                                                    ✓ Cấp phát
+                                                </button>
+                                            </form>
+                                            <form th:action="@{/doctor/dispense/reject/{id}(id=${p.id})}" method="post" style="display:inline">
+                                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Từ chối cấp phát thuốc này?')">
+                                                    ✗ Từ chối
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(pendingPrescriptions)}">
+                                    <td colspan="7" class="text-center text-muted py-5">
+                                        <i class="fs-4">ℹ️</i> Không có đơn thuốc đang chờ cấp phát.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    </body>
+</html>
+

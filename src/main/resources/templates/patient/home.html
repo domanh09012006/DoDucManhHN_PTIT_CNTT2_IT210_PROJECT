@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8">
+        <title>Trang chủ Bệnh nhân - Rikkei Hospital</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+        <style>
+            body {
+                font-family: 'Inter', sans-serif;
+                background-color: #f8f9fa;
+            }
+
+            .hero-section {
+                background: linear-gradient(135deg, #198754 0%, #20c997 100%);
+                color: white;
+                border-radius: 12px;
+            }
+
+            .action-card {
+                transition: transform 0.2s, box-shadow 0.2s;
+                border-radius: 12px;
+                border: none;
+            }
+
+            .action-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+            }
+        </style>
+    </head>
+    <body>
+
+        <div th:replace="~{fragments/patient-components :: navbar (activePage='home')}"></div>
+        <div th:replace="~{fragments/patient-components :: logoutModal}"></div>
+
+        <div class="container mt-4 mb-5">
+
+            <div class="row mb-5">
+                <div class="col-12">
+                    <div class="hero-section p-5 shadow-sm">
+                        <div class="row align-items-center">
+                            <div class="col-md-8 text-center text-md-start">
+                                <h2 class="fw-bold mb-3">Xin chào, <span th:text="${session.loggedInUser.username}">Bệnh nhân</span>!
+                                </h2>
+                                <p class="fs-5 mb-0 opacity-75">Chào mừng bạn đến với Cổng thông tin Y tế. Sức khỏe của
+                                    bạn là ưu tiên hàng đầu của chúng tôi.</p>
+                            </div>
+                            <div class="col-md-4 text-center text-md-end mt-4 mt-md-0">
+                                <a href="/patient/booking"
+                                   class="btn btn-light btn-lg fw-bold text-success rounded-pill shadow px-4">
+                                    + Đặt lịch khám ngay
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-dark mb-0">Dịch vụ nổi bật</h5>
+            </div>
+
+            <div class="row g-4">
+
+                <div class="col-md-4">
+                    <a href="/patient/booking" class="text-decoration-none">
+                        <div class="card action-card shadow-sm h-100">
+                            <div class="card-body text-center p-4">
+                                <h5 class="card-title fw-bold text-dark">Đặt lịch khám</h5>
+                                <p class="card-text text-muted small">Chọn chuyên khoa, bác sĩ và khung giờ phù hợp với
+                                    bạn một cách nhanh chóng nhất.</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-md-4">
+                    <a href="/patient/profile" class="text-decoration-none">
+                        <div class="card action-card shadow-sm h-100">
+                            <div class="card-body text-center p-4">
+                                <h5 class="card-title fw-bold text-dark">Hồ sơ cá nhân</h5>
+                                <p class="card-text text-muted small">Cập nhật thông tin liên lạc, địa chỉ và thông tin
+                                    y tế cơ bản của bạn.</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-md-4">
+                    <a href="/patient/history" class="text-decoration-none">
+                        <div class="card action-card shadow-sm h-100">
+                            <div class="card-body text-center p-4">
+                                <h5 class="card-title fw-bold text-dark">Lịch sử khám bệnh</h5>
+                                <p class="card-text text-muted small">Tra cứu lại kết quả chẩn đoán, đơn thuốc và lịch
+                                    sử điều trị trước đây.</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    </body>
+</html>

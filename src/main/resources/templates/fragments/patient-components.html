@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+    <body>
+
+        <nav th:fragment="navbar" class="navbar navbar-expand-lg navbar-dark bg-success shadow-sm sticky-top">
+            <div class="container">
+                <a class="navbar-brand fw-bold" href="/patient/home">Hospital</a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" th:classappend="${activePage == 'home'} ? 'active fw-bold' : ''"
+                               href="/patient/home">Trang chủ</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" th:classappend="${activePage == 'booking'} ? 'active fw-bold' : ''"
+                               href="/patient/booking">Đặt lịch khám</a>
+                        </li>
+                    </ul>
+
+                    <div class="dropdown">
+                        <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle"
+                           id="dropdownUser" data-bs-toggle="dropdown" aria-expanded="false">
+                            <strong th:text="${session.loggedInUser.username}">Patient</strong>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="dropdownUser">
+                            <li><a class="dropdown-item" href="/patient/profile">Hồ sơ cá nhân</a></li>
+                            <li><a class="dropdown-item" href="/patient/history">Lịch sử khám</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal"
+                                   data-bs-target="#patientLogoutModal">Đăng xuất</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div th:fragment="logoutModal" class="modal fade" id="patientLogoutModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">Đăng xuất</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        Bạn có muốn đăng xuất khỏi tài khoản bệnh nhân không?
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                        <a href="/logout" class="btn btn-danger btn-sm">Đăng xuất</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </body>
+</html>
