@@ -21,9 +21,15 @@ public class Medicine {
     private String name;
 
     private String manufacturer;
+
     @Min(value = 0, message = "Số lượng trong kho không được âm!")
     private int quantity;
+
     @DecimalMin(value = "1000.0", message = "Giá thuốc tối thiểu là 1,000đ!")
     private double price;
+
     private String description;
+
+    @Version
+    private Long version;
 }

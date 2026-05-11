@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.project_hospital.entity.*;
 import org.example.project_hospital.repository.*;
+import org.example.project_hospital.service.DispenseService;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
@@ -20,12 +21,17 @@ import java.util.Optional;
 @RequestMapping("/doctor")
 @RequiredArgsConstructor
 public class DoctorController {
+
     private final AppointmentRepository appointmentRepository;
     private final DoctorRepository doctorRepository;
     private final MedicalRecordRepository medicalRecordRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final MedicineRepository medicineRepository;
+    private final DispenseService dispenseService;
 
+    // ================= LẤY THÔNG TIN BÁC SĨ ĐANG ĐĂNG NHẬP =================
+
+    // Lấy User của bác sĩ từ session
     private Optional<User> getLoggedInDoctorUser(HttpSession session) {
         User user = (User) session.getAttribute("loggedInUser");
         if (user == null || user.getRole() != Role.DOCTOR) {
@@ -34,6 +40,7 @@ public class DoctorController {
         return Optional.of(user);
     }
 
+    // Lấy thông tin Doctor đầy đủ từ User
     private Doctor getLoggedInDoctor(HttpSession session) {
         Optional<User> userOpt = getLoggedInDoctorUser(session);
         if (userOpt.isEmpty()) {
@@ -42,6 +49,7 @@ public class DoctorController {
         return doctorRepository.findByUser(userOpt.get()).orElse(null);
     }
 
+    // Kiểm tra lịch hẹn có thuộc về bác sĩ đang đăng nhập không
     private Appointment getDoctorAppointment(Long id, Doctor doctor) {
         Appointment appt = appointmentRepository.findById(id).orElse(null);
         if (appt == null) {
@@ -54,6 +62,9 @@ public class DoctorController {
         return appt;
     }
 
+    // ================= 1. QUẢN LÝ LỊCH HẸN =================
+
+    // Hiển thị danh sách lịch hẹn của bác sĩ
     @GetMapping("/appointments")
     public String showDoctorAppointments(HttpSession session, Model model) {
         Doctor doctor = getLoggedInDoctor(session);
@@ -67,101 +78,12 @@ public class DoctorController {
         return "doctor/appointments";
     }
 
-    @GetMapping("/dispense")
-    public String showDoctorDispense(HttpSession session, Model model) {
-        Doctor doctor = getLoggedInDoctor(session);
-        if (doctor == null) {
-            return "redirect:/login";
-        }
-        model.addAttribute(
-                "pendingPrescriptions",
-                prescriptionRepository.findByStatusAndMedicalRecord_Appointment_Doctor(
-                        PrescriptionStatus.PENDING,
-                        doctor
-                )
-        );
-        return "doctor/dispense";
-    }
-
-    @PostMapping("/dispense/confirm/{id}")
-    @Transactional
-    public String confirmDoctorDispense(@PathVariable Long id,
-                                        HttpSession session) {
-        Doctor doctor = getLoggedInDoctor(session);
-        if (doctor == null) {
-            return "redirect:/login";
-        }
-        Prescription pres = prescriptionRepository.findById(id).orElse(null);
-        if (pres == null) {
-            return "redirect:/doctor/dispense?error=notfound";
-        }
-        if (pres.getStatus() != PrescriptionStatus.PENDING) {
-            return "redirect:/doctor/dispense?error=processed";
-        }
-        Appointment appt = pres.getMedicalRecord().getAppointment();
-        if (appt.getDoctor() == null ||
-                !appt.getDoctor().getId().equals(doctor.getId())) {
-            return "redirect:/doctor/dispense?error=forbidden";
-        }
-        Medicine med = pres.getMedicine();
-        if (med.getQuantity() < pres.getDosage()) {
-            return "redirect:/doctor/dispense?error=stock";
-        }
-        med.setQuantity(med.getQuantity() - pres.getDosage());
-        medicineRepository.save(med);
-        pres.setStatus(PrescriptionStatus.DISPENSED);
-        prescriptionRepository.save(pres);
-        long remain = prescriptionRepository.countByMedicalRecord_IdAndStatus(
-                pres.getMedicalRecord().getId(),
-                PrescriptionStatus.PENDING
-        );
-        if (remain == 0) {
-            appt.setStatus("COMPLETED");
-            appointmentRepository.save(appt);
-        }
-        return "redirect:/doctor/dispense?success=dispensed";
-    }
-
-    @PostMapping("/dispense/reject/{id}")
-    @Transactional
-    public String rejectDoctorDispense(@PathVariable Long id,
-                                       HttpSession session) {
-        Doctor doctor = getLoggedInDoctor(session);
-        if (doctor == null) {
-            return "redirect:/login";
-        }
-        Prescription pres = prescriptionRepository.findById(id).orElse(null);
-        if (pres == null) {
-            return "redirect:/doctor/dispense?error=notfound";
-        }
-        if (pres.getStatus() != PrescriptionStatus.PENDING) {
-            return "redirect:/doctor/dispense?error=processed";
-        }
-        Appointment appt = pres.getMedicalRecord().getAppointment();
-        if (appt.getDoctor() == null ||
-                !appt.getDoctor().getId().equals(doctor.getId())) {
-            return "redirect:/doctor/dispense?error=forbidden";
-        }
-        pres.setStatus(PrescriptionStatus.REJECTED);
-        prescriptionRepository.save(pres);
-        long remain = prescriptionRepository.countByMedicalRecord_IdAndStatus(
-                pres.getMedicalRecord().getId(),
-                PrescriptionStatus.PENDING
-        );
-        if (remain == 0) {
-            appt.setStatus("COMPLETED");
-            appointmentRepository.save(appt);
-        }
-        return "redirect:/doctor/dispense?success=rejected";
-    }
-
+    // Xác nhận lịch hẹn
     @GetMapping("/appointments/confirm/{id}")
-    public String confirmAppointment(@PathVariable Long id,
-                                     HttpSession session) {
+    public String confirmAppointment(@PathVariable Long id, HttpSession session) {
         Doctor doctor = getLoggedInDoctor(session);
-        if (doctor == null) {
-            return "redirect:/login";
-        }
+        if (doctor == null) return "redirect:/login";
+
         Appointment appt = getDoctorAppointment(id, doctor);
         if (appt == null) {
             return "redirect:/doctor/appointments?error=forbidden";
@@ -171,13 +93,12 @@ public class DoctorController {
         return "redirect:/doctor/appointments?success=confirmed";
     }
 
+    // Hủy lịch hẹn
     @GetMapping("/appointments/cancel/{id}")
-    public String cancelAppointment(@PathVariable Long id,
-                                    HttpSession session) {
+    public String cancelAppointment(@PathVariable Long id, HttpSession session) {
         Doctor doctor = getLoggedInDoctor(session);
-        if (doctor == null) {
-            return "redirect:/login";
-        }
+        if (doctor == null) return "redirect:/login";
+
         Appointment appt = getDoctorAppointment(id, doctor);
         if (appt == null) {
             return "redirect:/doctor/appointments?error=forbidden";
@@ -187,27 +108,32 @@ public class DoctorController {
         return "redirect:/doctor/appointments?success=cancelled";
     }
 
+    // ================= 2. KHÁM BỆNH & KÊ ĐƠN =================
+
+    // Hiển thị form khám bệnh và kê đơn
     @GetMapping("/appointments/examine/{id}")
     public String showExamineForm(@PathVariable Long id,
                                   HttpSession session,
                                   Model model) {
         Doctor doctor = getLoggedInDoctor(session);
-        if (doctor == null) {
-            return "redirect:/login";
-        }
+        if (doctor == null) return "redirect:/login";
+
         Appointment appt = getDoctorAppointment(id, doctor);
         if (appt == null) {
             return "redirect:/doctor/appointments?error=forbidden";
         }
-        MedicalRecord existingRecord =
-                medicalRecordRepository.findByAppointment_Id(id)
-                        .orElse(new MedicalRecord());
+
+        MedicalRecord existingRecord = medicalRecordRepository.findByAppointment_Id(id)
+                .orElse(new MedicalRecord());
+
         model.addAttribute("appointment", appt);
         model.addAttribute("record", existingRecord);
         model.addAttribute("medicines", medicineRepository.findAll());
+
         return "doctor/examine";
     }
 
+    // Lưu bệnh án và đơn thuốc
     @PostMapping("/appointments/examine/{id}/save")
     @Transactional
     public String saveMedicalRecord(@PathVariable Long id,
@@ -218,146 +144,175 @@ public class DoctorController {
                                     @RequestParam(required = false) List<String> instructions,
                                     HttpSession session,
                                     Model model) {
+
         Doctor doctor = getLoggedInDoctor(session);
-        if (doctor == null) {
-            return "redirect:/login";
-        }
+        if (doctor == null) return "redirect:/login";
+
         Appointment appt = getDoctorAppointment(id, doctor);
         if (appt == null) {
             return "redirect:/doctor/appointments?error=forbidden";
         }
+
         if (result.hasErrors()) {
             model.addAttribute("appointment", appt);
             model.addAttribute("medicines", medicineRepository.findAll());
             return "doctor/examine";
         }
-        List<Long> selectedMedicineIds = new ArrayList<>();
-        List<Integer> selectedDosages = new ArrayList<>();
-        List<String> selectedInstructions = new ArrayList<>();
+
+        List<Prescription> newPrescriptions = new ArrayList<>();
+
+        // Xử lý kê đơn thuốc
         if (medicineIds != null && !medicineIds.isEmpty()) {
             for (int i = 0; i < medicineIds.size(); i++) {
-                String medicineIdRaw = medicineIds.get(i);
-                if (medicineIdRaw == null || medicineIdRaw.isBlank()) {
-                    continue;
-                }
-                Long medicineId;
+                String medIdStr = medicineIds.get(i);
+                if (medIdStr == null || medIdStr.trim().isEmpty()) continue;
+
                 try {
-                    medicineId = Long.parseLong(medicineIdRaw);
-                } catch (NumberFormatException ex) {
+                    Long medicineId = Long.parseLong(medIdStr.trim());
+                    String dosageStr = (dosages != null && i < dosages.size()) ? dosages.get(i) : null;
+
+                    if (dosageStr == null || dosageStr.trim().isEmpty()) {
+                        model.addAttribute("sysError", "Vui lòng nhập liều lượng cho tất cả thuốc đã chọn.");
+                        model.addAttribute("appointment", appt);
+                        model.addAttribute("medicines", medicineRepository.findAll());
+                        return "doctor/examine";
+                    }
+
+                    int dosage = Integer.parseInt(dosageStr.trim());
+                    if (dosage < 1) {
+                        throw new IllegalArgumentException("Liều lượng phải lớn hơn 0");
+                    }
+
+                    Medicine medicine = medicineRepository.findById(medicineId).orElse(null);
+                    if (medicine == null) {
+                        model.addAttribute("sysError", "Thuốc không tồn tại.");
+                        model.addAttribute("appointment", appt);
+                        model.addAttribute("medicines", medicineRepository.findAll());
+                        return "doctor/examine";
+                    }
+
+                    Prescription p = new Prescription();
+                    p.setMedicine(medicine);
+                    p.setDosage(dosage);
+                    p.setInstruction((instructions != null && i < instructions.size())
+                            ? instructions.get(i) : "");
+                    p.setStatus(PrescriptionStatus.PENDING);
+                    newPrescriptions.add(p);
+
+                } catch (Exception e) {
+                    model.addAttribute("sysError", "Lỗi dữ liệu đơn thuốc: " + e.getMessage());
                     model.addAttribute("appointment", appt);
                     model.addAttribute("medicines", medicineRepository.findAll());
-                    model.addAttribute("sysError", "Mã thuốc không hợp lệ.");
                     return "doctor/examine";
                 }
-                String dosageRaw =
-                        (dosages != null && dosages.size() > i)
-                                ? dosages.get(i)
-                                : null;
-                if (dosageRaw == null || dosageRaw.isBlank()) {
-                    model.addAttribute("appointment", appt);
-                    model.addAttribute("medicines", medicineRepository.findAll());
-                    model.addAttribute("sysError",
-                            "Vui lòng nhập đủ số lượng cho từng thuốc đã chọn.");
-                    return "doctor/examine";
-                }
-                int dosage;
-                try {
-                    dosage = Integer.parseInt(dosageRaw);
-                } catch (NumberFormatException ex) {
-                    model.addAttribute("appointment", appt);
-                    model.addAttribute("medicines", medicineRepository.findAll());
-                    model.addAttribute("sysError",
-                            "Liều lượng thuốc không hợp lệ.");
-                    return "doctor/examine";
-                }
-                if (dosage < 1) {
-                    model.addAttribute("appointment", appt);
-                    model.addAttribute("medicines", medicineRepository.findAll());
-                    model.addAttribute("sysError",
-                            "Liều lượng thuốc phải lớn hơn 0.");
-                    return "doctor/examine";
-                }
-                Medicine medicine =
-                        medicineRepository.findById(medicineId).orElse(null);
-                if (medicine == null) {
-                    model.addAttribute("appointment", appt);
-                    model.addAttribute("medicines", medicineRepository.findAll());
-                    model.addAttribute("sysError", "Thuốc không tồn tại.");
-                    return "doctor/examine";
-                }
-                if (medicine.getQuantity() < dosage) {
-                    model.addAttribute("appointment", appt);
-                    model.addAttribute("medicines", medicineRepository.findAll());
-                    model.addAttribute(
-                            "sysError",
-                            "Thuốc " + medicine.getName()
-                                    + " không đủ số lượng trong kho."
-                    );
-                    return "doctor/examine";
-                }
-                selectedMedicineIds.add(medicineId);
-                selectedDosages.add(dosage);
-                selectedInstructions.add(
-                        (instructions != null && instructions.size() > i)
-                                ? instructions.get(i)
-                                : ""
-                );
             }
         }
-        MedicalRecord recordToSave =
-                medicalRecordRepository.findByAppointment_Id(id)
-                        .orElse(record);
+
+        // Lưu bệnh án
+        MedicalRecord recordToSave = medicalRecordRepository.findByAppointment_Id(id)
+                .orElse(new MedicalRecord());
+
         recordToSave.setAppointment(appt);
         recordToSave.setDiagnosis(record.getDiagnosis());
         recordToSave.setTreatmentPlan(record.getTreatmentPlan());
         recordToSave.setCreatedAt(LocalDateTime.now());
+
         if (recordToSave.getPrescriptions() != null) {
             recordToSave.getPrescriptions().clear();
         }
-        medicalRecordRepository.save(recordToSave);
-        if (!selectedMedicineIds.isEmpty()) {
-            for (int i = 0; i < selectedMedicineIds.size(); i++) {
-                Prescription p = new Prescription();
-                p.setMedicalRecord(recordToSave);
-                p.setMedicine(
-                        medicineRepository.findById(selectedMedicineIds.get(i))
-                                .orElseThrow()
-                );
-                p.setDosage(selectedDosages.get(i));
-                p.setInstruction(selectedInstructions.get(i));
-                p.setStatus(PrescriptionStatus.PENDING);
+
+        MedicalRecord savedRecord = medicalRecordRepository.save(recordToSave);
+
+        // Lưu đơn thuốc
+        if (!newPrescriptions.isEmpty()) {
+            for (Prescription p : newPrescriptions) {
+                p.setMedicalRecord(savedRecord);
                 prescriptionRepository.save(p);
             }
-        }
-        if (!selectedMedicineIds.isEmpty()) {
             appt.setStatus("WAITING_DISPENSE");
-            appointmentRepository.save(appt);
-            return "redirect:/doctor/dispense?success=fromExam";
+        } else {
+            appt.setStatus("COMPLETED");
         }
-        appt.setStatus("COMPLETED");
+
         appointmentRepository.save(appt);
-        return "redirect:/doctor/appointments?success=examined";
+
+        if (!newPrescriptions.isEmpty()) {
+            return "redirect:/doctor/dispense?success=fromExam";
+        } else {
+            return "redirect:/doctor/appointments?success=examined";
+        }
     }
 
+    // ================= 3. CẤP PHÁT THUỐC =================
+
+    // Hiển thị danh sách đơn thuốc chờ cấp phát
+    @GetMapping("/dispense")
+    public String showDoctorDispense(HttpSession session, Model model) {
+        Doctor doctor = getLoggedInDoctor(session);
+        if (doctor == null) return "redirect:/login";
+
+        model.addAttribute("pendingPrescriptions",
+                prescriptionRepository.findByStatusAndMedicalRecord_Appointment_Doctor(
+                        PrescriptionStatus.PENDING, doctor));
+        return "doctor/dispense";
+    }
+
+    // Xác nhận cấp phát thuốc
+    @PostMapping("/dispense/confirm/{id}")
+    public String confirmDoctorDispense(@PathVariable Long id, HttpSession session) {
+        User doctorUser = getLoggedInDoctorUser(session).orElse(null);
+        if (doctorUser == null) return "redirect:/login";
+
+        String result = dispenseService.confirmDispense(id, doctorUser);
+
+        if ("stock".equals(result)) {
+            return "redirect:/doctor/dispense?error=stock";
+        } else if ("processed".equals(result)) {
+            return "redirect:/doctor/dispense?error=processed";
+        } else if ("forbidden".equals(result)) {
+            return "redirect:/doctor/dispense?error=forbidden";
+        } else if ("dispensed".equals(result)) {
+            return "redirect:/doctor/dispense?success=dispensed";
+        } else {
+            return "redirect:/doctor/dispense?error=unknown";
+        }
+    }
+
+    // Từ chối cấp phát thuốc
+    @PostMapping("/dispense/reject/{id}")
+    public String rejectDoctorDispense(@PathVariable Long id, HttpSession session) {
+        User doctorUser = getLoggedInDoctorUser(session).orElse(null);
+        if (doctorUser == null) return "redirect:/login";
+
+        String result = dispenseService.rejectDispense(id, doctorUser);
+
+        if ("processed".equals(result)) {
+            return "redirect:/doctor/dispense?error=processed";
+        } else if ("forbidden".equals(result)) {
+            return "redirect:/doctor/dispense?error=forbidden";
+        } else if ("rejected".equals(result)) {
+            return "redirect:/doctor/dispense?success=rejected";
+        } else {
+            return "redirect:/doctor/dispense?error=unknown";
+        }
+    }
+
+    // ================= 4. LỊCH SỬ CẤP PHÁT =================
+
+    // Xem lịch sử cấp phát / từ chối thuốc của bác sĩ
     @GetMapping("/dispense/history")
-    public String showDoctorDispenseHistory(HttpSession session,
-                                            Model model) {
+    public String showDoctorDispenseHistory(HttpSession session, Model model) {
         Doctor doctor = getLoggedInDoctor(session);
         if (doctor == null) {
             return "redirect:/login";
         }
-        var dispensedPrescriptions =
-                prescriptionRepository.findByStatusInAndMedicalRecord_Appointment_Doctor(
-                        List.of(
-                                PrescriptionStatus.DISPENSED,
-                                PrescriptionStatus.REJECTED
-                        ),
-                        doctor
-                );
-        model.addAttribute(
-                "dispensedPrescriptions",
-                dispensedPrescriptions
-        );
+
+        var dispensedPrescriptions = prescriptionRepository
+                .findByStatusInAndMedicalRecord_Appointment_Doctor(
+                        List.of(PrescriptionStatus.DISPENSED, PrescriptionStatus.REJECTED),
+                        doctor);
+
+        model.addAttribute("dispensedPrescriptions", dispensedPrescriptions);
         return "doctor/dispense-history";
     }
 }

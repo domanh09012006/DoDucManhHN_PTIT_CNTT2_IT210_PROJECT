@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.project_hospital.dto.DoctorDTO;
 import org.example.project_hospital.entity.*;
 import org.example.project_hospital.repository.*;
+import org.example.project_hospital.service.DispenseService;
 import org.example.project_hospital.service.UserService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
@@ -247,81 +248,54 @@ public class AdminController {
     }
 
     // ================= 6. CẤP PHÁT THUỐC (PHARMACY) =================
+    private final DispenseService dispenseService;
+
     @GetMapping("/dispense")
     public String manageDispense(HttpSession session, Model model) {
         if (!isAdmin(session)) return "redirect:/login";
 
-        model.addAttribute("pendingPrescriptions", prescriptionRepository.findByStatus(org.example.project_hospital.entity.PrescriptionStatus.PENDING));
+        model.addAttribute("pendingPrescriptions",
+                prescriptionRepository.findByStatus(PrescriptionStatus.PENDING));
         model.addAttribute("activePage", "dispense");
         return "admin/dispense";
     }
 
     @PostMapping("/dispense/confirm/{id}")
-    @Transactional
     public String confirmDispense(@PathVariable Long id, HttpSession session) {
         if (!isAdmin(session)) return "redirect:/login";
 
-        var pres = prescriptionRepository.findById(id).orElseThrow();
-        if (pres.getStatus() != org.example.project_hospital.entity.PrescriptionStatus.PENDING) {
-            return "redirect:/admin/dispense?error=processed";
-        }
+        User admin = (User) session.getAttribute("loggedInUser");
+        if (admin == null) return "redirect:/login";
 
-        Medicine med = pres.getMedicine();
-        if (med.getQuantity() < pres.getDosage()) {
+        String result = dispenseService.confirmDispense(id, admin);
+
+        if ("stock".equals(result)) {
             return "redirect:/admin/dispense?error=stock";
+        } else if ("processed".equals(result)) {
+            return "redirect:/admin/dispense?error=processed";
+        } else if ("dispensed".equals(result)) {
+            return "redirect:/admin/dispense?success=dispensed";
+        } else {
+            return "redirect:/admin/dispense?error=unknown";
         }
-
-        med.setQuantity(med.getQuantity() - pres.getDosage());
-        medicineRepository.save(med);
-
-        pres.setStatus(org.example.project_hospital.entity.PrescriptionStatus.DISPENSED);
-        prescriptionRepository.save(pres);
-
-        long remain = prescriptionRepository.countByMedicalRecord_IdAndStatus(
-                pres.getMedicalRecord().getId(),
-                org.example.project_hospital.entity.PrescriptionStatus.PENDING
-        );
-        if (remain == 0) {
-            Appointment appt = pres.getMedicalRecord().getAppointment();
-            appt.setStatus("COMPLETED");
-            appointmentRepository.save(appt);
-        }
-
-        return "redirect:/admin/dispense?success=dispensed";
     }
 
     @PostMapping("/dispense/reject/{id}")
-    @Transactional
     public String rejectDispense(@PathVariable Long id, HttpSession session) {
         if (!isAdmin(session)) return "redirect:/login";
 
-        var pres = prescriptionRepository.findById(id).orElseThrow();
-        if (pres.getStatus() != org.example.project_hospital.entity.PrescriptionStatus.PENDING) {
+        User admin = (User) session.getAttribute("loggedInUser");
+        if (admin == null) return "redirect:/login";
+
+        String result = dispenseService.rejectDispense(id, admin);
+
+        if ("processed".equals(result)) {
             return "redirect:/admin/dispense?error=processed";
+        } else if ("rejected".equals(result)) {
+            return "redirect:/admin/dispense?success=rejected";
+        } else {
+            return "redirect:/admin/dispense?error=unknown";
         }
-
-        pres.setStatus(org.example.project_hospital.entity.PrescriptionStatus.REJECTED);
-        prescriptionRepository.save(pres);
-
-        long remain = prescriptionRepository.countByMedicalRecord_IdAndStatus(
-                pres.getMedicalRecord().getId(),
-                org.example.project_hospital.entity.PrescriptionStatus.PENDING
-        );
-        if (remain == 0) {
-            Appointment appt = pres.getMedicalRecord().getAppointment();
-            appt.setStatus("COMPLETED");
-            appointmentRepository.save(appt);
-        }
-
-        return "redirect:/admin/dispense?success=rejected";
-    }
-
-    @GetMapping("/medicines/delete/{id}")
-    public String deleteMedicine(@PathVariable Long id, HttpSession session) {
-        if (!isAdmin(session)) return "redirect:/login";
-
-        medicineRepository.deleteById(id);
-        return "redirect:/admin/medicines?success=deleted";
     }
 
     // ================= 5. QUẢN LÝ CHUYÊN KHOA =================
