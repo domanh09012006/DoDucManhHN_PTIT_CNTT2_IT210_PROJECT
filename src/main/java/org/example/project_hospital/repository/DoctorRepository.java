@@ -12,4 +12,5 @@ public interface DoctorRepository extends JpaRepository<Doctor, Long> {
     Optional<Doctor> findByUser(User user);
 
     boolean existsBySpecialty_Id(Long specialtyId);
+//    List<Doctor> findByExperienceYearsGreaterThan(int years);
 }

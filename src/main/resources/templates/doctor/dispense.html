@@ -35,7 +35,6 @@
         <div th:replace="~{fragments/doctor-components :: logoutModal}"></div>
 
         <div class="container-fluid p-4">
-            <!-- Thông báo -->
             <div th:if="${param.success == 'fromExam'}" class="alert alert-success alert-dismissible fade show">
                 <strong>Thành công!</strong> Bệnh án đã lưu, đơn thuốc đã được chuyển sang hàng chờ cấp phát.
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -44,7 +43,6 @@
                 <strong>Lỗi!</strong> Không đủ tồn kho để cấp phát.
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-            <!-- Các alert khác giữ nguyên... -->
 
             <div class="card shadow-sm border-0">
                 <div class="card-body">

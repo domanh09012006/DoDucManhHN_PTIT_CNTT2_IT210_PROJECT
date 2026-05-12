@@ -70,17 +70,17 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <h5 class="fw-bold mb-0 text-success">📋 Danh sách đơn thuốc chờ cấp phát</h5>
+                            <h5 class="fw-bold mb-0 text-success"> Danh sách đơn thuốc chờ cấp phát</h5>
                             <small class="text-muted">Các đơn thuốc cần được xác nhận hoặc từ chối</small>
                         </div>
                         <a href="/admin/dispense/history" class="btn btn-outline-info btn-sm">
-                            📜 Xem lịch sử
+                             Xem lịch sử
                         </a>
                     </div>
 
                     <div th:if="${!#lists.isEmpty(pendingPrescriptions)}" class="info-box">
                         <p class="info-box-text mb-0">
-                            <strong>ℹ️ Hướng dẫn:</strong> Kiểm tra thông tin đơn thuốc rồi xác nhận cấp phát hoặc từ chối.
+                            <strong>ℹ Hướng dẫn:</strong> Kiểm tra thông tin đơn thuốc rồi xác nhận cấp phát hoặc từ chối.
                             Nếu cấp phát, số lượng thuốc trong kho sẽ được trừ tự động.
                         </p>
                     </div>
@@ -126,7 +126,7 @@
                             </tr>
                             <tr th:if="${#lists.isEmpty(pendingPrescriptions)}">
                                 <td colspan="8" class="text-center text-muted py-5">
-                                    <i class="fs-4">ℹ️</i> Không có đơn thuốc đang chờ cấp phát.
+                                    <i class="fs-4">ℹ</i> Không có đơn thuốc đang chờ cấp phát.
                                 </td>
                             </tr>
                             </tbody>

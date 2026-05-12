@@ -11,6 +11,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import static org.example.project_hospital.entity.Role.PATIENT;
+
 @Controller
 public class AuthController {
 
@@ -71,7 +73,7 @@ public class AuthController {
         return "register";
     }
 
-    // Xử lý đăng ký tài khoản mới (mặc định là PATIENT)
+    // Xử lý đăng ký tài khoản mới
     @PostMapping("/register")
     public String processRegister(@Valid @ModelAttribute("authDTO") AuthDTO authDTO,
                                   org.springframework.validation.BindingResult bindingResult,
@@ -90,7 +92,8 @@ public class AuthController {
 
         // Đăng ký thành công
         userService.register(authDTO);
-        return "redirect:/login?registered=true";
+        return "redirect:/patient/home";
+
     }
 
     // ================= ĐĂNG XUẤT =================
